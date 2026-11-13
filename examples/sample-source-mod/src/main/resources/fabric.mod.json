@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "modstride_example",
+  "version": "1.0.0",
+  "name": "Copper Token",
+  "description": "An original example mod with a single stack-limited item.",
+  "license": "MIT",
+  "entrypoints": {
+    "main": ["org.modstride.examples.CopperToken"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.11",
+    "minecraft": "1.20.1",
+    "java": ">=17"
+  }
+}

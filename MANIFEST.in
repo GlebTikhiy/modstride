@@ -1,0 +1,6 @@
+include AGENTS.md CHANGELOG.md CONTRIBUTING.md README.ru.md SECURITY.md
+recursive-include docs *.md
+recursive-include examples *.md *.gradle *.properties *.java *.json LICENSE
+recursive-include scripts *.py
+recursive-include skills *.md LICENSE
+recursive-include tests *.py

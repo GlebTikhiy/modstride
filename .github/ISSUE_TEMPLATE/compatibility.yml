@@ -1,0 +1,17 @@
+name: Migration compatibility
+description: Report a scan, plan, rule or verification issue
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Source and target environments
+      description: Include Minecraft, loader, mappings, Java and modstride versions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reproduction and evidence
+      description: Include the command, observed stage, expected result and a minimal redacted example.
+    validations:
+      required: true

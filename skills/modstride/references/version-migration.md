@@ -1,0 +1,7 @@
+# Version migration
+
+Pin the Minecraft patch release and its loader, build plugin, mapping artifact, Gradle and Java requirements. Check the JDK that runs Gradle and the JDK that compiles and runs the game. Use the target loader's version-matched template and inventory project-specific repository, publishing and resource processing settings before porting them. [Gradle Java compatibility](https://docs.gradle.org/current/userguide/compatibility.html) · [Gradle toolchains](https://docs.gradle.org/current/userguide/toolchains.html)
+
+Use a direct upgrade when source behavior is understood and target APIs cover it. Stage at a boundary when an intermediate build isolates a high-risk conversion, such as validating world data before replacing a second persistence system. Use a replacement API when the original abstraction disappeared. Reimplement a feature when the target lifecycle or world model requires a different implementation. Write down what each stage proves.
+
+Inspect recipes, tags, loot tables, models, commands, block states and generated resources separately. Asset and data pack formats can change independently. Confirm each format and directory layout against the target, then load the pack and inspect reload logs. Minecraft 1.20.3 raised the resource pack version to 22. Minecraft 1.20.4 shipped as a hotfix. [Minecraft 1.20.3 release notes](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-20-3) · [Minecraft 1.20.4 release notes](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-20-4)

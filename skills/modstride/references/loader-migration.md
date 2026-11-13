@@ -1,0 +1,7 @@
+# Loader migration
+
+Recreate entry points using a version-matched target template. Inventory initializer responsibilities, side-specific operations, and when registry handles become usable. Check the target metadata's IDs, dependency ranges, entry point kinds, and environment declarations. Check that the built JAR contains the resolved metadata, declared classes and resources. A dependency may have separate loader artifacts, a replacement API or no target release. [Fabric mod metadata](https://docs.fabricmc.net/develop/loader/fabric-mod-json) · [Forge 1.20.1 mod files](https://docs.minecraftforge.net/en/1.20.1/gettingstarted/modfiles/) · [NeoForge 1.21.1 mod files](https://docs.neoforged.net/docs/1.21.1/gettingstarted/modfiles/)
+
+For a Forge capability, identify the query contract, owner lifetime, invalidation, persistence and synchronization. Find an equivalent query or transfer mechanism if other mods consume the interface. Use the target's appropriate storage mechanism for ownership and serialization. Verify external consumers and saved data independently. [Forge 1.20.1 capabilities](https://docs.minecraftforge.net/en/1.20.1/datastorage/capabilities/) · [NeoForge 1.21.1 data attachments](https://docs.neoforged.net/docs/1.21.1/datastorage/attachments/)
+
+Inventory configuration keys, old file locations, defaults, migration behavior, synchronization and reload timing. Preserve keys and defaults when feasible. Verify old files are accepted or provide explicit conversion and validate invalid values and missing keys.
