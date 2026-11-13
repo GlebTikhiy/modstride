@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "id": "fabric-1204-metadata-minecraft",
+  "title": "Retarget the exact Fabric Minecraft dependency",
+  "path": "src/main/resources/fabric.mod.json",
+  "references": [
+    "https://wiki.fabricmc.net/documentation:fabric_mod_json_spec",
+    "https://github.com/FabricMC/fabric-loader/blob/0.15.11/src/main/java/net/fabricmc/loader/impl/metadata/V1ModMetadataParser.java"
+  ],
+  "source": {
+    "engine": "minecraft",
+    "loader": "fabric",
+    "version": "1.20.1",
+    "mappings": "mojang"
+  },
+  "target": {
+    "engine": "minecraft",
+    "loader": "fabric",
+    "version": "1.20.4",
+    "mappings": "mojang"
+  },
+  "confidence": "verified",
+  "preconditions": [
+    "Exact supported source and target; review all dependencies and mappings.",
+    "The designated configuration field occurs once and contains the exact source value."
+  ],
+  "transformation": {
+    "kind": "json-string",
+    "keys": [
+      "depends",
+      "minecraft"
+    ],
+    "before": "1.20.1",
+    "after": "1.20.4"
+  },
+  "postconditions": [
+    "Only the designated value changes and reparsing returns the exact target value."
+  ],
+  "behavioral_differences": "The project requests the new game dependency or advertises it to the loader. Gameplay compatibility requires independent verification.",
+  "limitations": [
+    "Single-module conventional Fabric layout using Mojang mappings.",
+    "Generated metadata, Java API changes and version ranges require review."
+  ],
+  "verification_evidence": [
+    "Original sample configuration and regression tests for exact value, drift, and idempotent replay."
+  ],
+  "tests": [
+    "tests/test_workflow.py::test_original_sample"
+  ],
+  "status": "trusted"
+}

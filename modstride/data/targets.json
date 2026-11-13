@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "loaders": {
+    "fabric": {
+      "mode": "assisted",
+      "reference": "https://docs.fabricmc.net/develop/porting/"
+    },
+    "forge": {
+      "mode": "assisted",
+      "reference": "https://docs.minecraftforge.net/en/1.20.1/"
+    },
+    "neoforge": {
+      "mode": "assisted",
+      "reference": "https://docs.neoforged.net/docs/1.21.1/"
+    },
+    "quilt": {
+      "mode": "assessment",
+      "reference": "https://docs.quiltmc.org/"
+    }
+  },
+  "versions": {
+    "1.7.10": 8,
+    "1.12.2": 8,
+    "1.16.5": 8,
+    "1.20.1": 17,
+    "1.20.4": 17,
+    "1.21.1": 21
+  },
+  "demonstrated": [
+    {
+      "source": "1.20.1",
+      "target": "1.20.4",
+      "loader": "fabric",
+      "mappings": "mojang"
+    }
+  ],
+  "engines": {
+    "horizon": {
+      "mode": "experimental-assessment",
+      "reference": "https://github.com/horizon-rust/horizon/blob/main/docs/mods.md",
+      "capabilities": {
+        "world": "unsupported",
+        "blocks": "requires-reimplementation",
+        "items": "requires-reimplementation",
+        "entities": "requires-reimplementation",
+        "events": "requires-reimplementation",
+        "scheduling": "unsupported",
+        "networking": "requires-reimplementation",
+        "rendering": "requires-reimplementation",
+        "resources": "adaptable",
+        "persistence": "requires-reimplementation",
+        "initialization": "requires-reimplementation",
+        "mixins": "requires-reimplementation",
+        "configuration": "requires-reimplementation",
+        "registries": "requires-reimplementation"
+      }
+    }
+  }
+}
