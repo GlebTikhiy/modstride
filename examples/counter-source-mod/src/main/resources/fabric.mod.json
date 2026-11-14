@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "modstride_counter",
+  "version": "1.0.0",
+  "name": "Field Counter",
+  "license": "MIT",
+  "entrypoints": {
+    "main": [
+      "org.modstride.examples.counter.CounterMod"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "modstride_counter.client.mixins.json",
+      "environment": "client"
+    },
+    "modstride_counter.server.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.11",
+    "fabric-api": "*",
+    "minecraft": "1.20.4"
+  }
+}

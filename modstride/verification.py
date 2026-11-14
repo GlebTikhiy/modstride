@@ -12,7 +12,16 @@ from pathlib import Path
 from typing import Any
 
 from .io import inside, is_link, json_load, read_json, safe_path
+from .probes import (
+    MARKER,
+    TASK_NAME,
+    check_readiness,
+    gradle_launcher,
+    parity,
+    run_probe,
+)
 from .scan import scan
+from .workspace import snapshot
 
 TASK = re.compile(r"^> Task (:\S+)(?: (\S+))?$")
 MISSING_DEPENDENCY = re.compile(
@@ -270,13 +279,12 @@ def _gradle_checks(
     executable = _gradle_path(workspace, gradle)
     if executable is None:
         return _build_unavailable("blocked", "Gradle launcher was not found."), []
-    command = [str(executable), "--no-daemon", "--console=plain", "build"]
-    if os.name == "nt" and executable.suffix.lower() in {".bat", ".cmd"}:
-        # Windows dispatches batch files through cmd.exe. Avoid shell expansion in the launcher path.
-        if re.search(r'[%!&^|<>"]', str(executable)):
-            raise ValueError(
-                "Gradle batch launcher path contains cmd.exe metacharacters."
-            )
+    command = [
+        str(gradle_launcher(executable)),
+        "--no-daemon",
+        "--console=plain",
+        "build",
+    ]
 
     before = _discover_artifacts(workspace)
     log_name = f".modstride/gradle-{uuid.uuid4().hex}.log"
@@ -412,11 +420,23 @@ def verify(
     gradle: Path | None = None,
     evidence: Path | None = None,
     timeout: int = 300,
+    runtime: dict[str, str] | None = None,
+    parity_task: str | None = None,
+    baseline: Path | None = None,
+    baseline_java: Path | None = None,
 ) -> dict[str, Any]:
     """Verify a locked migration workspace and return serializable stage results."""
     workspace = safe_path(workspace)
     if timeout <= 0:
         raise ValueError("Verification timeout must be positive.")
+    if (runtime or parity_task) and not run_gradle:
+        raise ValueError(
+            "Runtime and parity probes require authorized Gradle execution."
+        )
+    if bool(parity_task) != bool(baseline):
+        raise ValueError("Parity requires a task and a disposable baseline copy.")
+    if baseline is not None:
+        baseline = _validate_baseline(workspace, state, baseline)
     target = state["plan"]["target"]
     manual = _manual_checks(workspace, evidence)
     inventory = scan(workspace)
@@ -432,4 +452,139 @@ def verify(
         build = _build_unavailable("not available", "No Gradle project detected.")
     else:
         build, artifacts = _gradle_checks(workspace, gradle=gradle, timeout=timeout)
+    if (runtime or parity_task) and target["engine"] == "minecraft":
+        probes = _probe_checks(
+            workspace,
+            gradle,
+            timeout,
+            runtime or {},
+            parity_task,
+            baseline,
+            baseline_java,
+        )
+        if baseline is not None and snapshot(baseline) != state["baseline"]:
+            probes["gameplay"] = stage(
+                "gameplay",
+                "failed",
+                "The probe changed baseline project inputs.",
+                probes["gameplay"]["evidence"],
+            )
+        manual = [probes.get(entry["id"], entry) for entry in manual]
     return {"stages": checks + build + manual, "artifacts": artifacts}
+
+
+def _probe_checks(
+    workspace: Path,
+    gradle: Path | None,
+    timeout: int,
+    runtime: dict[str, str],
+    parity_task: str | None,
+    baseline: Path | None,
+    baseline_java: Path | None,
+) -> dict[str, dict]:
+    stages = {}
+    tasks = {"client": "runClient", "dedicated-server": "runServer"}
+    if not runtime.keys() <= tasks.keys() or any(
+        not MARKER.fullmatch(marker) for marker in runtime.values()
+    ):
+        raise ValueError("Runtime readiness markers must be single uppercase tokens")
+    if parity_task and not TASK_NAME.fullmatch(parity_task):
+        raise ValueError("Expected an unqualified Gradle parity task name")
+    executable = _gradle_path(workspace, gradle)
+    for name, marker in runtime.items():
+        if name == "dedicated-server" and not _server_eula(workspace):
+            stages[name] = stage(
+                name,
+                "blocked",
+                "Supply an accepted eula.txt in the disposable run/server directory.",
+            )
+        elif executable is None:
+            stages[name] = stage(name, "blocked", "Gradle launcher was not found.")
+        else:
+            probe = check_readiness(
+                run_probe(workspace, workspace, executable, tasks[name], timeout),
+                workspace,
+                marker,
+            )
+            stages[name] = stage(name, probe.status, probe.detail, [probe.log])
+    if parity_task and baseline is not None:
+        original_gradle = _gradle_path(baseline, gradle)
+        stages["gameplay"] = stage(
+            "gameplay", "blocked", "A Gradle launcher is required for both projects."
+        )
+        if original_gradle is not None and executable is not None:
+            stages["gameplay"] = _parity_check(
+                workspace,
+                baseline,
+                executable,
+                original_gradle,
+                parity_task,
+                timeout,
+                baseline_java,
+            )
+    return stages
+
+
+def _validate_baseline(workspace: Path, state: dict, baseline: Path) -> Path:
+    baseline = safe_path(baseline)
+    source = Path(state["plan"]["source"]["source"])
+    if any(
+        baseline.is_relative_to(root) or root.is_relative_to(baseline)
+        for root in (source, workspace)
+    ):
+        raise ValueError(
+            "Parity requires a disposable baseline copy disjoint from source and target"
+        )
+    if not baseline.is_dir() or snapshot(baseline) != state["baseline"]:
+        raise ValueError("Parity baseline does not match the original migration inputs")
+    return baseline
+
+
+def _server_eula(workspace: Path) -> bool:
+    eula = inside(workspace, "run/server/eula.txt", missing=True)
+    if not eula.is_file():
+        return False
+    values = re.findall(
+        r"(?m)^\s*eula\s*=\s*(\w+)[ \t]*\r?$", _read_regular(eula, 4096).decode("utf-8")
+    )
+    return values == ["true"]
+
+
+def _parity_check(
+    workspace: Path,
+    baseline: Path,
+    gradle: Path,
+    original_gradle: Path,
+    task: str,
+    timeout: int,
+    baseline_java: Path | None,
+) -> dict:
+    original = run_probe(
+        baseline, workspace, original_gradle, task, timeout, java_home=baseline_java
+    )
+    migrated = run_probe(workspace, workspace, gradle, task, timeout)
+    logs = [original.log, migrated.log]
+    for side, probe in (("Source", original), ("Target", migrated)):
+        if probe.status != "passed":
+            return stage(
+                "gameplay", probe.status, f"{side} probe: {probe.detail}", logs
+            )
+    try:
+        before, after, differences = parity(*(inside(workspace, name) for name in logs))
+    except ValueError as error:
+        return stage("gameplay", "failed", str(error), logs)
+    result = stage(
+        "gameplay",
+        "failed" if differences else "passed",
+        f"{len(differences)} differing observations"
+        if differences
+        else f"{len(before)} matching observations from {task}",
+        logs,
+    )
+    result.update(
+        provenance="paired Gradle probe",
+        source=before,
+        target=after,
+        differences=differences,
+    )
+    return result

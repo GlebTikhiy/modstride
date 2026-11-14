@@ -24,6 +24,8 @@ Run `modstride resume --workspace WORKSPACE` and compare its status against the 
 
 ## References
 
+- [API research and rule proposals](references/api-research.md) for undocumented breaks, version-pinned experiments, Java changes and review evidence.
+
 - [Workflow and handoff](references/migration-workflow.md) for the compatibility matrix, checkpoints and optional roles.
 - [Version migration](references/version-migration.md) for large jumps, toolchains and resource changes.
 - [Loader migration](references/loader-migration.md) for entry points, lifecycle, capabilities and configuration.

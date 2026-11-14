@@ -34,6 +34,8 @@ The example retargets the original Copper Token mod from **Fabric 1.20.1 to 1.20
 
 ## Migration coverage
 
+- Fabric 1.20.4 → 1.20.6 with Mojang mappings demonstrates an actual Java API migration. Field Counter moves per-item state to custom data components and compares behavior across both versions. [0.2.0 development report](docs/development-0.2.0.md)
+
 - Fabric 1.20.1 → 1.20.4 with Mojang mappings is the demonstrated path for the conventional single-module layout and exact declarations.
 - Fabric, Forge and NeoForge plans include subsystem risks and agent review tasks. Quilt is assessment-only. Exact Java and Gradle requirements still depend on the project and target.
 - The scanner inventories common mapping declarations. The CLI can look up exact symbols in a supplied Tiny v2 table. Source remapping and MCP/SRG or Mojang file conversion use external tools.

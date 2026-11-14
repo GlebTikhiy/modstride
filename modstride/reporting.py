@@ -111,6 +111,7 @@ def plan_markdown(plan: dict) -> str:
             entry["status"],
             ", ".join(entry["dependencies"]),
             " ".join(entry["verification"]),
+            ", ".join(entry.get("references", [])),
         )
         for entry in plan["operations"]
     ]
@@ -130,7 +131,9 @@ def plan_markdown(plan: dict) -> str:
             "",
             "## Operations",
             "",
-            _table(["ID", "Kind", "Status", "Depends on", "Verification"], rows),
+            _table(
+                ["ID", "Kind", "Status", "Depends on", "Verification", "Sources"], rows
+            ),
             "",
             "## Deferred rules",
             "",
@@ -222,6 +225,7 @@ def report_markdown(report: dict) -> str:
     verification = status["verification"]
     notes = "No verification run recorded."
     rows = []
+    observations = []
     if verification:
         notes = (
             "Recorded verification."
@@ -240,6 +244,13 @@ def report_markdown(report: dict) -> str:
             )
             for stage in verification["stages"]
         ]
+        for stage in verification["stages"]:
+            if stage["id"] == "gameplay" and "source" in stage and "target" in stage:
+                before, after = stage["source"], stage["target"]
+                observations = [
+                    (key, before.get(key, "missing"), after.get(key, "missing"))
+                    for key in sorted(before.keys() | after.keys())
+                ]
     return "\n".join(
         [
             "# Migration report",
@@ -278,6 +289,16 @@ def report_markdown(report: dict) -> str:
             "",
             _table(["Stage", "Status", "Provenance", "Details", "Evidence"], rows),
             "",
+            *(
+                [
+                    "### Paired behavior observations",
+                    "",
+                    _table(["Scenario", "Source", "Target"], observations),
+                    "",
+                ]
+                if observations
+                else []
+            ),
             "Build artifacts",
             "",
             *(

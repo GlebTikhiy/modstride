@@ -78,6 +78,29 @@ def _parser() -> argparse.ArgumentParser:
     )
     verify.add_argument("--workspace", type=Path, required=True)
     verify.add_argument(
+        "--client-ready",
+        metavar="MARKER",
+        help="Run reviewed runClient and require its readiness marker",
+    )
+    verify.add_argument(
+        "--server-ready",
+        metavar="MARKER",
+        help="Run reviewed runServer in run/server with an accepted EULA file",
+    )
+    verify.add_argument(
+        "--parity-task",
+        metavar="TASK",
+        help="Run the same reviewed observation task on baseline and target",
+    )
+    verify.add_argument(
+        "--baseline",
+        type=Path,
+        help="Disposable copy of the original source for parity checks",
+    )
+    verify.add_argument(
+        "--baseline-java", type=Path, help="JAVA_HOME for baseline parity execution"
+    )
+    verify.add_argument(
         "--run-gradle",
         action="store_true",
         help="Authorize execution of reviewed project build code",
@@ -261,6 +284,20 @@ def _run_workspace(args: argparse.Namespace, root: Path, state: dict) -> int:
             raise ValueError("--gradle requires --run-gradle")
         if args.gradle and not args.gradle.is_absolute():
             raise ValueError("--gradle requires an absolute launcher path")
+        runtime = {
+            name: marker
+            for name, marker in (
+                ("client", args.client_ready),
+                ("dedicated-server", args.server_ready),
+            )
+            if marker is not None
+        }
+        if (runtime or args.parity_task) and not args.run_gradle:
+            raise ValueError("Runtime and parity probes require --run-gradle")
+        if bool(args.baseline) != bool(args.parity_task) or (
+            args.baseline_java and not args.baseline
+        ):
+            raise ValueError("--parity-task and --baseline are required together")
         before = workspace_fingerprint(root)
         result = verify(
             root,
@@ -269,6 +306,10 @@ def _run_workspace(args: argparse.Namespace, root: Path, state: dict) -> int:
             gradle=args.gradle,
             evidence=args.evidence,
             timeout=args.timeout,
+            runtime=runtime,
+            parity_task=args.parity_task,
+            baseline=args.baseline,
+            baseline_java=args.baseline_java,
         )
         result["workspace_sha256"] = before
         verification_args = ["modstride", "verify", "--workspace", str(root)]
@@ -278,12 +319,26 @@ def _run_workspace(args: argparse.Namespace, root: Path, state: dict) -> int:
             verification_args += ["--gradle", str(args.gradle)]
         if args.evidence:
             verification_args += ["--evidence", str(args.evidence.absolute())]
+        for option in (
+            "client_ready",
+            "server_ready",
+            "parity_task",
+            "baseline",
+            "baseline_java",
+        ):
+            value = getattr(args, option)
+            if value is not None:
+                verification_args += [
+                    "--" + option.replace("_", "-"),
+                    str(value.absolute()) if isinstance(value, Path) else value,
+                ]
         result["command"] = verification_args
         logs = {
             item
             for stage in result["stages"]
             for item in stage["evidence"]
-            if item.startswith(".modstride/gradle-") and item.endswith(".log")
+            if item.startswith((".modstride/gradle-", ".modstride/probe-"))
+            and item.endswith(".log")
         }
         result["evidence_hashes"] = {
             name: file_digest(inside(root, name)) for name in sorted(logs)

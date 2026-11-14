@@ -34,6 +34,12 @@ SYSTEMS = {
     "integrations": "Check dependency availability and behavior with and without optional integrations.",
 }
 CAPABILITIES = {"direct", "adaptable", "requires-reimplementation", "unsupported"}
+LEGACY_FORGE_REFERENCES = [
+    "https://docs.minecraftforge.net/en/1.12.x/concepts/registries/",
+    "https://docs.minecraftforge.net/en/1.12.x/networking/simpleimpl/",
+    "https://docs.neoforged.net/docs/1.21.1/concepts/registries/",
+    "https://docs.neoforged.net/docs/1.21.1/networking/payload/",
+]
 
 
 @dataclass(frozen=True)
@@ -251,6 +257,22 @@ def make_plan(source: Path, target: Target, rules: dict[str, Rule]) -> dict:
             "Record version-pinned source or official documentation for the target and each dependency.",
         )
     ]
+    if (
+        confirmed["loader"] == "forge"
+        and confirmed["version"] == "1.12.2"
+        and target.loader == "neoforge"
+        and target.version == "1.21.1"
+    ):
+        operations.append(
+            _operation(
+                "assess-legacy-forge",
+                "Assess legacy Forge lifecycle, registries, packets and save data",
+                "manual",
+                [research],
+                "Demonstrate one feature on both releases and choose a staged conversion only for a specific blocker.",
+                references=LEGACY_FORGE_REFERENCES,
+            )
+        )
     automated = []
     deferred = []
     for rule in rules.values():
@@ -297,7 +319,7 @@ def make_plan(source: Path, target: Target, rules: dict[str, Rule]) -> dict:
             setup,
             "Review build, loader and mapping configuration",
             "manual",
-            [research, *(entry["id"] for entry in automated)],
+            [entry["id"] for entry in operations],
             "Confirm dependency versions, Gradle/JDK support, loader metadata and production remapping.",
         )
     )
@@ -375,7 +397,13 @@ def validate_plan(plan) -> dict:
         resolved = resolve_target(
             target["version"], target["loader"], target["engine"], target["mappings"]
         )
-        if target != asdict(resolved) or not Path(source["source"]).is_absolute():
+        current = asdict(resolved)
+        # A catalogue update can fill an older plan's unknown Java requirement.
+        historical = {**current, "java": None, "mode": "assessment"}
+        if (
+            target != current
+            and not (resolved.engine == "minecraft" and target == historical)
+        ) or not Path(source["source"]).is_absolute():
             raise ValueError("Invalid target or source path in plan")
         if source["kind"] not in {"directory", "jar"} or not isinstance(
             operations, list

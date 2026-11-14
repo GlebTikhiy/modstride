@@ -1,0 +1,53 @@
+plugins {
+    id 'fabric-loom' version '1.6.12'
+}
+
+group = 'org.modstride.examples'
+version = '1.0.0'
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(project.java_version.toInteger())
+}
+
+tasks.named('jar') {
+    from('LICENSE')
+}
+
+sourceSets {
+    parity {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+tasks.register('counterParity', JavaExec) {
+    dependsOn sourceSets.parity.classesTaskName
+    def probeDir = layout.projectDirectory.dir('run/parity')
+    workingDir probeDir
+    doFirst { probeDir.asFile.mkdirs() }
+    classpath = sourceSets.parity.runtimeClasspath
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+    mainClass = 'org.modstride.examples.counter.CounterParity'
+}
+
+loom {
+    runs {
+        client {
+            runDir 'run/client'
+            vmArg '-Dmodstride.counter.smoke=true'
+            programArgs '--width', '640', '--height', '360'
+        }
+        server {
+            runDir 'run/server'
+            vmArg '-Dmodstride.counter.serverSmoke=true'
+            programArg 'nogui'
+        }
+    }
+}

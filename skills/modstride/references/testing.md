@@ -1,5 +1,7 @@
 # Testing and gameplay parity
 
+For a project with finite Loom launch tasks, opt into `verify --run-gradle --client-ready MARKER` or `--server-ready MARKER`. Verify that the marker is emitted only after the readiness condition and that the task then exits. Use a disposable server directory with an operator-accepted EULA. Use `--parity-task TASK --baseline COPY` for a reviewed task that emits `MODSTRIDE_OBSERVATION name=integer` lines on each version. Add `--baseline-java` for different Java requirements. Report precisely which behaviors those observations cover.
+
 For each feature record baseline versions and dependencies, initial world and player state, triggering actions, expected observable result, network observers and persistence checkpoints. Example for a placed machine:
 
 | Step | Observation |

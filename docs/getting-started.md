@@ -16,3 +16,5 @@ After interruption, run `resume`. Use `resume --apply` if creation published the
 - `2` means invalid arguments, incompatible input, or a command error.
 
 Use the [Copper Token example](../examples/sample-migration/README.md) for concrete commands, a build result and a behavioral test checklist.
+
+Use the [Field Counter walkthrough](development-0.2.0.md) for a Java API migration with client startup and paired behavior probes. Runtime probes run a reviewed Gradle task to completion and require its readiness marker. The parity task emits named integer observations on both projects. A failed process, missing observation, or mismatched value cannot pass.

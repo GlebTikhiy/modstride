@@ -9,6 +9,7 @@ from pathlib import Path
 from .io import digest, inside, json_bytes, json_load, portable_parts, read_json
 
 KEY = re.compile(r"[a-zA-Z0-9_.-]+")
+PROPERTY_VALUE = re.compile(r"[a-zA-Z0-9_.+-]+")
 RULE_ID = re.compile(r"[a-z][a-z0-9-]{2,79}")
 SELECTORS = {"engine", "loader", "version", "mappings"}
 MAX_RULE_INPUT = 2 * 1024 * 1024
@@ -66,7 +67,27 @@ class Rule:
         operation = self.data["transformation"]
         bom = raw.startswith(b"\xef\xbb\xbf")
         text = raw.decode("utf-8-sig")
-        if operation["kind"] == "property":
+        kind = operation["kind"]
+        if kind == "java-source":
+            return _java_source(text, operation, self.id).encode(
+                "utf-8-sig" if bom else "utf-8"
+            )
+        if kind == "properties":
+            edits = [
+                (*property_span(text, edit["key"]), edit["before"], edit["after"])
+                for edit in operation["edits"]
+            ]
+            values = [value for _, _, value, _, _ in edits]
+            if values == [after for _, _, _, _, after in edits]:
+                return raw
+            if values != [before for _, _, _, before, _ in edits]:
+                raise ValueError(
+                    f"{self.id} requires all reviewed source property values"
+                )
+            for start, end, _, _, after in sorted(edits, reverse=True):
+                text = text[:start] + after + text[end:]
+            return text.encode("utf-8-sig" if bom else "utf-8")
+        if kind == "property":
             start, end, value = property_span(text, operation["key"])
             replacement = operation["after"]
         else:
@@ -81,6 +102,20 @@ class Rule:
         return (text[:start] + replacement + text[end:]).encode(
             "utf-8-sig" if bom else "utf-8"
         )
+
+
+def _java_source(text: str, operation: dict, rule_id: str) -> str:
+    # Match the complete reviewed source, normalizing only the checkout line ending.
+    normalized = text.replace("\r\n", "\n")
+    if normalized == operation["after"]:
+        return text
+    if normalized != operation["before"]:
+        raise ValueError(f"{rule_id} requires the exact reviewed Java source")
+    if "\r\n" in text:
+        if "\n" in text.replace("\r\n", ""):
+            raise ValueError(f"{rule_id} does not handle mixed Java line endings")
+        return operation["after"].replace("\n", "\r\n")
+    return operation["after"]
 
 
 def property_span(text: str, key: str) -> tuple[int, int, str]:
@@ -202,6 +237,50 @@ def validate_rule(data) -> Rule:
     if not isinstance(operation, dict):
         raise ValueError("Expected transformation object")
     kind = operation.get("kind")
+    if kind == "java-source" and path[-1].endswith(".java") and "src" in path[:-1]:
+        if (
+            set(operation) != {"kind", "before", "after"}
+            or not all(
+                isinstance(operation[key], str)
+                and 0 < len(operation[key]) <= MAX_RULE_INPUT
+                and "\r" not in operation[key]
+                and "\x00" not in operation[key]
+                for key in ("before", "after")
+            )
+            or operation["before"] == operation["after"]
+        ):
+            raise ValueError(
+                "Expected distinct reviewed Java sources with LF line endings"
+            )
+        return Rule(data)
+    if kind == "properties" and path[-1] == "gradle.properties":
+        edits = operation.get("edits")
+        if (
+            set(operation) != {"kind", "edits"}
+            or not isinstance(edits, list)
+            or not edits
+        ):
+            raise ValueError("Expected grouped Gradle property edits")
+        seen = set()
+        for edit in edits:
+            if (
+                not isinstance(edit, dict)
+                or set(edit) != {"key", "before", "after"}
+                or not all(
+                    isinstance(edit[field], str)
+                    and (KEY if field == "key" else PROPERTY_VALUE).fullmatch(
+                        edit[field]
+                    )
+                    for field in ("key", "before", "after")
+                )
+                or edit["before"] == edit["after"]
+                or edit["key"] in seen
+            ):
+                raise ValueError(
+                    "Expected unique property keys and distinct literal values"
+                )
+            seen.add(edit["key"])
+        return Rule(data)
     expected = {"kind", "before", "after"}
     if kind == "property" and path[-1] == "gradle.properties":
         expected.add("key")

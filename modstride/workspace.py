@@ -36,6 +36,8 @@ EXCLUDED = {
 
 
 def project_files(root: Path) -> Iterator[tuple[Path, str]]:
+    root = safe_path(root)
+
     def visit(directory: Path) -> Iterator[tuple[Path, str]]:
         names: set[str] = set()
         under_source = "src" in {
@@ -66,7 +68,7 @@ def project_files(root: Path) -> Iterator[tuple[Path, str]]:
             else:
                 raise ValueError(f"Source contains a special file: {item}")
 
-    yield from visit(safe_path(root))
+    yield from visit(root)
 
 
 def file_digest(path: Path) -> str:

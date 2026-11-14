@@ -1,0 +1,6 @@
+{
+  "required": true,
+  "package": "org.modstride.examples.counter.server",
+  "server": ["ServerSmokeMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "fabric-1206-counter-custom-data",
+  "title": "Port the Field Counter ItemStack storage API",
+  "path": "src/main/java/org/modstride/examples/counter/CounterStorage.java",
+  "source": {
+    "engine": "minecraft",
+    "loader": "fabric",
+    "version": "1.20.4",
+    "mappings": "mojang"
+  },
+  "target": {
+    "engine": "minecraft",
+    "loader": "fabric",
+    "version": "1.20.6",
+    "mappings": "mojang"
+  },
+  "confidence": "verified",
+  "status": "trusted",
+  "preconditions": [
+    "Confirmed Fabric and Mojang mapping declarations; exact source and target versions.",
+    "The designated file matches the reviewed source values."
+  ],
+  "postconditions": [
+    "The complete designated change matches the reviewed target; a second run is a no-op."
+  ],
+  "behavioral_differences": "Store the same integer key under minecraft:custom_data. Reads default to zero and writes update only that key.",
+  "limitations": [
+    "The Java rule recognizes the exact original Field Counter storage helper. Other ItemStack patterns require source review.",
+    "The route does not establish compatibility for arbitrary mods or upgraded worlds."
+  ],
+  "references": [
+    "https://fabricmc.net/2024/04/19/1205.html",
+    "https://www.minecraft.net/en-us/article/minecraft-java-edition-1-20-5",
+    "https://github.com/neoforged/.github/blob/main/primers/1.20.5/index.md"
+  ],
+  "verification_evidence": [
+    "Field Counter compiled against the 1.20.4 and 1.20.6 Minecraft artifacts; counter parity probes ran on both versions."
+  ],
+  "tests": [
+    "tests/test_counter_migration.py",
+    "examples/counter-source-mod/src/parity/java/org/modstride/examples/counter/CounterParity.java"
+  ],
+  "transformation": {
+    "kind": "java-source",
+    "before": "package org.modstride.examples.counter;\n\nimport net.minecraft.nbt.CompoundTag;\nimport net.minecraft.world.item.ItemStack;\n\nfinal class CounterStorage {\n    private static final String KEY = \"modstride_counter:count\";\n\n    static int read(ItemStack stack) {\n        CompoundTag tag = stack.getTag();\n        return tag == null ? 0 : tag.getInt(KEY);\n    }\n\n    static void write(ItemStack stack, int count) {\n        stack.getOrCreateTag().putInt(KEY, count);\n    }\n}\n",
+    "after": "package org.modstride.examples.counter;\n\nimport net.minecraft.core.component.DataComponents;\nimport net.minecraft.world.item.ItemStack;\nimport net.minecraft.world.item.component.CustomData;\n\nfinal class CounterStorage {\n    private static final String KEY = \"modstride_counter:count\";\n\n    static int read(ItemStack stack) {\n        CustomData data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);\n        return data.copyTag().getInt(KEY);\n    }\n\n    static void write(ItemStack stack, int count) {\n        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putInt(KEY, count));\n    }\n}\n"
+  }
+}
